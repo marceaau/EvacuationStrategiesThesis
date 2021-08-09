@@ -1,0 +1,92 @@
+to-report Total-expected-cost [#Goal]
+  report Cost-path + Heuristic #Goal
+end
+
+to-report Heuristic [#Goal]
+  report distance #Goal
+end
+
+to-report A* [#Start #Goal #valid-map]
+  ; clear all the information in the agents, and reset them
+  ask #valid-map with [visited?]
+  [
+    set father nobody
+    set Cost-path 0
+    set visited? false
+    set active? false
+  ]
+  ; Active the starting point to begin the searching loop
+  ask #Start
+  [
+    set father self
+    set visited? true
+    set active? true
+  ]
+  ; exists? indicates if in some instant of the search there are no options to continue. 
+  ; In this case, there is no path connecting #Start and #Goal
+  let exists? true
+  ; The searching loop is executed while we don't reach the #Goal and we think a path exists
+  while [not [visited?] of #Goal and exists?]
+  [
+    ; We only work on the valid pacthes that are active
+    let options #valid-map with [active?]
+    ; If any
+    ifelse any? options
+    [
+      ; Take one of the active patches with minimal expected cost
+      ask min-one-of options [Total-expected-cost #Goal]
+      [
+        ; Store its real cost (to reach it) to compute the real cost of its children
+        let Cost-path-father Cost-path
+        ; and deactivate it, because its children will be computed right now
+        set active? false
+        ; Compute its valid neighbors and look for an extension of the path
+        let valid-neighbors neighbors with [member? self #valid-map]
+        ask valid-neighbors
+        [
+          ; There are 2 types of valid neighbors:
+          ;   - Those that have never been visited (therefore, the path we are building is the
+          ;       best for them right now)
+          ;   - Those that have been visited previously (therefore we must check if the path we 
+          ;       are building is better or not, by comparing its expected length with the one 
+          ;       stored in the patch)
+          ; One trick to work with both type uniformly is to give for the first case an upper 
+          ;   bound big enough to be sure that the new path will always be smaller.
+          let t ifelse-value visited? [ Total-expected-cost #Goal] [2 ^ 20]
+          ; If this temporal cost is worse than the new one, we substitute the information in 
+          ;   the patch to store the new one (with the neighbors of the first case, it will be 
+          ;   always the case)
+          if t > (Cost-path-father + distance myself + Heuristic #Goal)
+          [
+            ; The current patch becomes the father of its neighbor in the new path
+            set father myself
+            set visited? true
+            set active? true
+            ; and store the real cost in the neighbor from the real cost of its father
+            set Cost-path Cost-path-father + distance father
+            set Final-Cost precision Cost-path 3
+    ] ] ] ]
+    ; If there are no more options, there is no path between #Start and #Goal
+    [
+      set exists? false
+    ] ]
+  ; After the searching loop, if there exists a path
+  ifelse exists?
+  [
+    ; We extract the list of patches in the path, form #Start to #Goal by jumping back from 
+    ;   #Goal to #Start by using the fathers of every patch
+    let current #Goal
+    set Final-Cost (precision [Cost-path] of #Goal 3)
+    let rep (list current)
+    While [current != #Start]
+    [
+      set current [father] of current
+      set rep fput current rep
+    ]
+    report rep
+  ]
+  [
+    ; Otherwise, there is no path, and we return False
+    report false
+  ]
+end
