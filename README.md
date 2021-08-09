@@ -7,3 +7,5 @@ Inside the model folder the NetLogo model can be found.
 Inside the validity folder the validity tests that were performed can be found.
 
 Inside the cysco_api folder the Python batch files can be found to execute and connect to the Data Platform and retrieve the WiFi traces.
+
+Inside the wifi folder the WiFi traces can be found and are processed in the Python Notebook respectively.
